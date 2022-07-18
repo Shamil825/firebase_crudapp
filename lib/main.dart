@@ -116,7 +116,7 @@ class MyHomePage extends StatelessWidget {
                   return null;
 
                 },                  decoration: const InputDecoration(
-                    hintText: "Birthdate",
+                    hintText: "Birthdate  ",
                     hintStyle: TextStyle(color: Colors.grey),
                   ),
                   controller: controllerDate,
