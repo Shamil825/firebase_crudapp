@@ -28,7 +28,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: MyHomePage(name: "", age: "", date: "", id: ""),
     );
   }
 }
@@ -38,12 +38,36 @@ class MyHomePage extends StatelessWidget {
   final controllerAge = TextEditingController();
   final controllerDate = TextEditingController();
 
-  MyHomePage({Key? key}) : super(key: key);
+  MyHomePage(
+      {Key? key,
+      required this.name,
+      required this.age,
+      required this.date,
+      required this.id})
+      : super(key: key);
+
   final controller = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String name;
+  String age;
+  String id;
+  String date;
+
+  dataset() {
+    if (name != "") {
+      controllerName.text = name;
+      controllerDate.text = date;
+      controllerAge.text = age;
+    }
+  }
+
+  String onname = "";
+  String onage = "";
+  String ondate = "";
 
   @override
   Widget build(BuildContext context) {
+    dataset();
     return Scaffold(
       appBar: AppBar(
         title: const Text("Add User"),
@@ -60,26 +84,25 @@ class MyHomePage extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         child: Form(
           key: _formKey,
-
-        child: ListView(
+          child: ListView(
             children: [
               const SizedBox(
                 height: 20,
               ),
               TextFormField(
+                onChanged: ((value) {
+                  onname = value;
+                }),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: (val){
-                  if(val==null||val.isEmpty){
-                    return "This field is required";
-                  }
-                  else if(val[0]==" "){
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return "This name is required";
+                  } else if (val[0] == " ") {
                     return "ithonnum patoola";
                   }
-                  
-                  return null;
 
+                  return null;
                 },
-                
                 controller: controllerName,
                 decoration: const InputDecoration(
                   hintText: "Name",
@@ -92,7 +115,16 @@ class MyHomePage extends StatelessWidget {
               const SizedBox(
                 height: 24,
               ),
-              TextField(
+              TextFormField(
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return "This Age is required";
+                  } else if (val[0] == " ") {
+                    return "ithonnum patoola";
+                  }
+
+                  return null;
+                },
                 controller: controllerAge,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
@@ -107,15 +139,17 @@ class MyHomePage extends StatelessWidget {
                 height: 24,
               ),
               DateTimeField(
-  validator: (val){
-                  if(val==null){
-                    return "This field is required";
-                  }
-               
-                  
-                  return null;
+                  onChanged: ((value) {
+                    ondate = value.toString();
+                  }),
+                  validator: (val) {
+                    if (val.toString() == null || val.toString().isEmpty) {
+                      return "This birthdate is required";
+                    }
 
-                },                  decoration: const InputDecoration(
+                    return null;
+                  },
+                  decoration: const InputDecoration(
                     hintText: "Birthdate  ",
                     hintStyle: TextStyle(color: Colors.grey),
                   ),
@@ -135,25 +169,26 @@ class MyHomePage extends StatelessWidget {
                 height: 40,
                 child: ElevatedButton(
                   onPressed: () {
-                    if(_formKey.currentState!.validate()){
-                       DateTime dt= DateTime.parse(controllerDate.text);
-                    var userDay= dt.day;
-                    var userMonth=dt.month;
-                    var userYear= dt.year;
-                    final user = User(
-                        name: controllerName.text,
-                        age: int.parse(controllerAge.text),
-                        birthday:"\$userDay/\$userMonth/\$userYear");
+                    if (_formKey.currentState!.validate()) {
+                      // DateTime dt =
+                      // DateTime.parse(controllerDate.text);
+                      // var userDay = dt.day;
+                      // var userMonth = dt.month;
+                      // var userYear = dt.year;
 
-                    createuser(user);
+                      final user = User(
+                          name: onname == "" ? onname : controllerName.text,
+                          age: int.parse(controllerAge.text),
+                          birthday: controllerDate.text);
+                      name != ""
+                          ? update(onname, onage, ondate)
+                          : createuser(user, id);
 
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const AllUsers()));
-
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const AllUsers()));
                     }
-                   
                   },
                   child: Text("Save"),
                   style: ButtonStyle(
@@ -170,13 +205,26 @@ class MyHomePage extends StatelessWidget {
     );
   }
 
-  Future createuser(User user) async {
-    final docUser = FirebaseFirestore.instance.collection
-    ('users').doc();
-    user.id = docUser.id;
+  Future update(String name, String age, String date) async {
+    var collection = FirebaseFirestore.instance.collection('users');
+    collection.doc(id).update(
+      {
+        'name': name,
+        'age': age,
+        'birthday': date,
+      },
+    );
+  }
+
+  Future createuser(User user, var idd) async {
+    final docUser = idd == ""
+        ? FirebaseFirestore.instance.collection('users').doc()
+        : FirebaseFirestore.instance.collection('users').doc(idd);
+
+    user.id = idd == "" ? docUser.id : idd;
     final json = user.toJson();
 
-    await docUser.set(json);
+    await docUser.set(json, SetOptions(merge: true));
   }
 }
 
@@ -186,11 +234,7 @@ class User {
   final int? age;
   final String? birthday;
 
-  User(
-      {this.id = "",
-       this.name,
-       this.age,
-       this.birthday});
+  User({this.id = "", this.name, this.age, this.birthday});
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -199,9 +243,11 @@ class User {
         'birthday': birthday,
       };
 
-  static User fromJson(Map<String, dynamic> json) => User(
-      id: json['id'],
-      name: json['name'],
-      age: json['age'],
-      birthday: (json['birthday'] ));
+  static User fromJson(Map<String, dynamic> json) {
+    return User(
+        id: json['id'],
+        name: json['name'],
+        age: json['age'],
+        birthday: (json['birthday']));
+  }
 }
